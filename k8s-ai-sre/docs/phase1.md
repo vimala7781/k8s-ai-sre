@@ -85,4 +85,6 @@ Before moving to Phase 2, confirm:
 - [ ] missing-secret-pod shows Pending
 
 ## Decisions log
-_Fill this in as you go — what broke, what you changed, what you learned._
+- oom-killed.yaml: original dd command did not allocate memory (streamed to disk).
+  Fixed to use string-doubling loop which holds memory in RAM and triggers OOMKill in ~5s.
+- kubectl run --limits flag removed in v1.35 — use YAML manifests for all pod creation.
