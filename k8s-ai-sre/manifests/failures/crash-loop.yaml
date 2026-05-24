@@ -1,0 +1,47 @@
+# crash-loop.yaml
+# M1.3 — Simulates CrashLoopBackOff
+#
+# WHAT THIS TEACHES:
+# CrashLoopBackOff means: the container started, ran, crashed (exit code != 0),
+# Kubernetes restarted it, it crashed again. After a few restarts Kubernetes
+# backs off — waiting longer each time (10s, 20s, 40s, 80s...) before retrying.
+# That "backing off" is what you see in the status.
+#
+# HOW WE CAUSE IT:
+# The command `exit 1` makes the container immediately exit with a failure code.
+# There is no actual app crash here — we're just simulating the symptom.
+# In real life this happens when: the app has a startup error, a missing config,
+# a failed DB connection on boot, or an unhandled exception at launch.
+#
+# WHAT TO LOOK FOR after applying:
+#   kubectl get pods -n k8s-ai-sre
+#   → STATUS will show: Error → CrashLoopBackOff
+#
+#   kubectl describe pod <pod-name> -n k8s-ai-sre
+#   → Look at: Last State, Exit Code, Reason, Events at the bottom
+#
+#   kubectl logs <pod-name> -n k8s-ai-sre
+#   → Will be empty here (container exits before writing logs)
+#   → In real incidents: this is where the stack trace lives
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: crash-loop-pod
+  namespace: k8s-ai-sre
+  labels:
+    scenario: crashloopbackoff
+    phase: "1"
+spec:
+  containers:
+    - name: crasher
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'Starting app...'; echo 'ERROR: database connection refused'; exit 1"]
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "50m"
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+  restartPolicy: Always

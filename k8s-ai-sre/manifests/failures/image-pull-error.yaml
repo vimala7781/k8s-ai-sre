@@ -1,0 +1,50 @@
+# image-pull-error.yaml
+# M1.3 — Simulates ErrImagePull / ImagePullBackOff
+#
+# WHAT THIS TEACHES:
+# Before a container can start, Kubernetes needs to pull the image
+# from a registry (Docker Hub, ECR, GCR, etc.).
+# If the image name is wrong, the tag doesn't exist, or credentials
+# are missing for a private registry — the pull fails.
+#
+# Kubernetes shows two states:
+#   ErrImagePull    — the first failed attempt
+#   ImagePullBackOff — subsequent attempts (backing off with delays)
+#
+# This is VERY common in real ops work:
+#   - Someone pushes a new image tag but the deployment YAML still has the old tag
+#   - The image was deleted from the registry
+#   - The imagePullSecret is missing or expired (private registries)
+#
+# HOW WE CAUSE IT:
+# We reference a Docker image that simply does not exist.
+# Kubernetes will try to pull it, fail, and enter ImagePullBackOff.
+#
+# WHAT TO LOOK FOR after applying:
+#   kubectl get pods -n k8s-ai-sre
+#   → STATUS: ErrImagePull → ImagePullBackOff
+#
+#   kubectl describe pod imagepull-pod -n k8s-ai-sre
+#   → Events section: "Failed to pull image... not found"
+#   → This is the raw error our AI agent will read and search
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: imagepull-pod
+  namespace: k8s-ai-sre
+  labels:
+    scenario: imagepullbackoff
+    phase: "1"
+spec:
+  containers:
+    - name: ghost-image
+      image: thisimage/doesnotexist:v99.99.99
+      resources:
+        requests:
+          memory: "32Mi"
+          cpu: "50m"
+        limits:
+          memory: "64Mi"
+          cpu: "100m"
+  restartPolicy: Always

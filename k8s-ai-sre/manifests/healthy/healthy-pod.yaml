@@ -1,0 +1,38 @@
+# healthy-pod.yaml
+# M1.2 — A working pod to confirm your cluster is healthy before we break things
+#
+# WHAT THIS TEACHES:
+# - A Deployment manages pods. If a pod dies, the Deployment recreates it.
+# - The namespace isolates this from other cluster workloads.
+# - The label app=healthy-nginx is how Kubernetes finds and groups pods.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: healthy-nginx
+  namespace: k8s-ai-sre
+  labels:
+    app: healthy-nginx
+    phase: "1"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: healthy-nginx
+  template:
+    metadata:
+      labels:
+        app: healthy-nginx
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:1.25
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "100m"
+            limits:
+              memory: "128Mi"
+              cpu: "200m"

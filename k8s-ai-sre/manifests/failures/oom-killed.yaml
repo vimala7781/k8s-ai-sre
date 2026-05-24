@@ -1,0 +1,44 @@
+# oom-killed.yaml
+# M1.3 — Simulates OOMKilled (Out Of Memory)
+#
+# WHAT THIS TEACHES:
+# Every pod has a memory LIMIT set in the manifest.
+# If the container tries to use more memory than the limit,
+# the Linux kernel's OOM (Out Of Memory) killer sends a SIGKILL signal.
+# Kubernetes sees exit code 137 (128 + 9, where 9 = SIGKILL).
+# It shows as OOMKilled in kubectl describe.
+#
+# HOW WE CAUSE IT:
+# We set an extremely low memory limit (32Mi) and then run a command
+# that allocates far more memory than that using /dev/urandom.
+# Kubernetes will kill it almost instantly.
+#
+# WHAT TO LOOK FOR after applying:
+#   kubectl get pods -n k8s-ai-sre
+#   → STATUS: OOMKilled (or CrashLoopBackOff after first restart)
+#
+#   kubectl describe pod oom-pod -n k8s-ai-sre
+#   → Look for: Exit Code: 137  and  Reason: OOMKilled
+#   → This is the exact thing our AI agent needs to detect
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: oom-pod
+  namespace: k8s-ai-sre
+  labels:
+    scenario: oomkilled
+    phase: "1"
+spec:
+  containers:
+    - name: memory-hog
+      image: busybox:1.36
+      command: ["sh", "-c", "echo 'Allocating memory...'; dd if=/dev/urandom of=/dev/null bs=1M count=500; sleep 3600"]
+      resources:
+        requests:
+          memory: "16Mi"
+          cpu: "50m"
+        limits:
+          memory: "32Mi"    # Very low limit — app will exceed this immediately
+          cpu: "100m"
+  restartPolicy: Always
